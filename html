@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Browsing Buddy</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="container">
+
+        <div class="header">
+            <div class="logo-section">
+                <div class="logo-icon">🛡️</div>
+                <h1>Safe Browsing Buddy</h1>
+            </div>
+            <p class="tagline">Keep your browsing safe and secure</p>
+        </div>
+
+        <div class="content-wrapper">
+
+            <div id="loadingState" class="state-container">
+                <div class="spinner"></div>
+                <p>Analyzing current website...</p>
+            </div>
+
+            <div id="errorState" class="state-container hidden">
+                <div class="error-icon">⚠️</div>
+                <p id="errorMessage">
+                    Unable to access website information.
+                </p>
+                <button id="retryButton" class="btn btn-primary">
+                    Retry Analysis
+                </button>
+            </div>
+
+            <div id="resultsState" class="state-container hidden">
+
+                <div class="url-card">
+                    <p class="label">Current Website:</p>
+                    <p id="currentUrl" class="url-text">
+                        Loading...
+                    </p>
+                </div>
+
+                <div class="risk-card">
+
+                    <div class="risk-header">
+
+                        <p class="label">Safety Assessment</p>
+
+                        <div class="risk-score-container">
+
+                            <div class="risk-score-ring">
+
+                                <svg viewBox="0 0 100 100" class="progress-ring">
+
+                                    <circle
+                                        cx="50"
+                                        cy="50"
+                                        r="45"
+                                        class="progress-background">
+                                    </circle>
+
+                                    <circle
+                                        cx="50"
+                                        cy="50"
+                                        r="45"
+                                        class="progress-circle"
+                                        id="progressCircle">
+                                    </circle>
+
+                                </svg>
+
+                                <div class="risk-score-text">
+                                    <span id="riskScore">0</span>
+                                    <span class="score-label">/100</span>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="risk-status-container">
+                        <p class="risk-status" id="riskStatus">
+                            Analyzing...
+                        </p>
+                    </div>
+
+                </div>
+
+                <div class="issues-card">
+
+                    <p class="label">Detected Issues:</p>
+
+                    <div id="issuesList" class="issues-list">
+
+                        <p class="no-issues">
+                            ✅ No suspicious patterns detected
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="tips-card">
+
+                    <p class="label">Safe Browsing Tips:</p>
+
+                    <ul class="tips-list">
+
+                        <li>✓ Check domain names carefully</li>
+
+                        <li>✓ Never share passwords or OTPs</li>
+
+                        <li>✓ Look for HTTPS padlock icon</li>
+
+                        <li>✓ Be suspicious of urgent messages</li>
+
+                        <li>✓ Avoid suspicious downloads</li>
+
+                        <li>✓ Verify website legitimacy</li>
+
+                    </ul>
+
+                </div>
+
+                <div class="button-group">
+
+                    <button
+                        id="analyzeAgainBtn"
+                        class="btn btn-primary">
+
+                        Analyze Again
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+
+</body>
+</html>
