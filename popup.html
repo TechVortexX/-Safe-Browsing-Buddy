@@ -1,149 +1,82 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Safe Browsing Buddy</title>
-    <link rel="stylesheet" href="popup.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Safe Browsing Buddy</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
-
 <body>
-    <div class="container">
+  <div class="container">
+    <header class="header">
+      <div class="logo-wrap">
+        <img src="icons/icon48.svg" alt="Safe Browsing Buddy" class="logo">
+        <h1>Safe Browsing Buddy</h1>
+      </div>
+      <div class="status-badge" id="status-badge">Ready</div>
+    </header>
 
-        <div class="header">
-            <div class="logo-section">
-                <div class="logo-icon">🛡️</div>
-                <h1>Safe Browsing Buddy</h1>
-            </div>
-            <p class="tagline">Keep your browsing safe and secure</p>
+    <main>
+      <div class="card url-card">
+        <h2>Current website</h2>
+        <p id="current-url" class="url">(no site detected)</p>
+        <div class="controls">
+          <button id="analyze-btn" class="btn primary">Analyze</button>
+          <button id="highlight-btn" class="btn ghost">Highlight</button>
+        </div>
+      </div>
+
+      <div class="card result-card hidden" id="result-card">
+        <div class="score-row">
+          <div class="gauge">
+            <div class="gauge-fill" id="gauge-fill" style="width:0%"></div>
+            <div class="gauge-label" id="gauge-label">0</div>
+          </div>
+          <div class="risk-info">
+            <div class="risk-level" id="risk-level">Unknown</div>
+            <div class="risk-desc" id="risk-desc">No analysis yet.</div>
+          </div>
         </div>
 
-        <div class="content-wrapper">
-
-            <div id="loadingState" class="state-container">
-                <div class="spinner"></div>
-                <p>Analyzing current website...</p>
-            </div>
-
-            <div id="errorState" class="state-container hidden">
-                <div class="error-icon">⚠️</div>
-                <p id="errorMessage">
-                    Unable to access website information.
-                </p>
-                <button id="retryButton" class="btn btn-primary">
-                    Retry Analysis
-                </button>
-            </div>
-
-            <div id="resultsState" class="state-container hidden">
-
-                <div class="url-card">
-                    <p class="label">Current Website:</p>
-                    <p id="currentUrl" class="url-text">
-                        Loading...
-                    </p>
-                </div>
-
-                <div class="risk-card">
-
-                    <div class="risk-header">
-
-                        <p class="label">Safety Assessment</p>
-
-                        <div class="risk-score-container">
-
-                            <div class="risk-score-ring">
-
-                                <svg viewBox="0 0 100 100" class="progress-ring">
-
-                                    <circle
-                                        cx="50"
-                                        cy="50"
-                                        r="45"
-                                        class="progress-background">
-                                    </circle>
-
-                                    <circle
-                                        cx="50"
-                                        cy="50"
-                                        r="45"
-                                        class="progress-circle"
-                                        id="progressCircle">
-                                    </circle>
-
-                                </svg>
-
-                                <div class="risk-score-text">
-                                    <span id="riskScore">0</span>
-                                    <span class="score-label">/100</span>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="risk-status-container">
-                        <p class="risk-status" id="riskStatus">
-                            Analyzing...
-                        </p>
-                    </div>
-
-                </div>
-
-                <div class="issues-card">
-
-                    <p class="label">Detected Issues:</p>
-
-                    <div id="issuesList" class="issues-list">
-
-                        <p class="no-issues">
-                            ✅ No suspicious patterns detected
-                        </p>
-
-                    </div>
-
-                </div>
-
-                <div class="tips-card">
-
-                    <p class="label">Safe Browsing Tips:</p>
-
-                    <ul class="tips-list">
-
-                        <li>✓ Check domain names carefully</li>
-
-                        <li>✓ Never share passwords or OTPs</li>
-
-                        <li>✓ Look for HTTPS padlock icon</li>
-
-                        <li>✓ Be suspicious of urgent messages</li>
-
-                        <li>✓ Avoid suspicious downloads</li>
-
-                        <li>✓ Verify website legitimacy</li>
-
-                    </ul>
-
-                </div>
-
-                <div class="button-group">
-
-                    <button
-                        id="analyzeAgainBtn"
-                        class="btn btn-primary">
-
-                        Analyze Again
-
-                    </button>
-
-                </div>
-
-            </div>
-
+        <div class="reasons">
+          <h3>Detected issues</h3>
+          <ul id="reasons-list" class="reasons-list"></ul>
         </div>
-    </div>
 
-    <script src="popup.js"></script>
+        <div class="recommendations">
+          <h3>Recommended actions</h3>
+          <ul>
+            <li>Check domain name carefully. Look for typos or extra words.</li>
+            <li>Never share passwords or OTPs.</li>
+            <li>Avoid downloading files from untrusted sites.</li>
+            <li>Be suspicious of urgent or threatening messages.</li>
+            <li>Verify websites before entering personal information.</li>
+          </ul>
+        </div>
 
+        <div class="controls">
+          <button id="scan-again" class="btn primary">Scan again</button>
+          <button id="open-site" class="btn ghost">Open site</button>
+        </div>
+      </div>
+
+      <div class="card tips-card">
+        <h3>Safe Browsing Tips</h3>
+        <ol>
+          <li>Check the domain carefully — subdomains can be misleading.</li>
+          <li>Look for HTTPS and a valid certificate (padlock icon).</li>
+          <li>Hover links to preview targets before clicking.</li>
+          <li>Use unique passwords and enable 2FA where possible.</li>
+          <li>Keep your browser and OS updated.</li>
+        </ol>
+      </div>
+    </main>
+
+    <footer>
+      <small>All analysis is performed locally. No data leaves your browser.</small>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
 </body>
 </html>

@@ -1,528 +1,226 @@
-const loadingState = document.getElementById('loadingState');
-const errorState = document.getElementById('errorState');
-const resultsState = document.getElementById('resultsState');
-const errorMessage = document.getElementById('errorMessage');
-const currentUrlDisplay = document.getElementById('currentUrl');
-const riskScoreDisplay = document.getElementById('riskScore');
-const riskStatusDisplay = document.getElementById('riskStatus');
-const issuesListDisplay = document.getElementById('issuesList');
-const analyzeAgainBtn = document.getElementById('analyzeAgainBtn');
-const retryButton = document.getElementById('retryButton');
-const progressCircle = document.getElementById('progressCircle');
+// popup.js - performs local URL analysis and updates UI
+// No remote calls, no eval. All analysis is local.
 
-function analyzeURL(urlString) {
-    const analysis = {
-        score: 0,
-        reasons: []
-    };
+const dom = id => document.getElementById(id);
 
-    try {
-        const url = new URL(urlString);
-        const hostname = url.hostname;
-        const fullUrl = url.toString();
+const analyzeBtn = dom('analyze-btn');
+const scanAgainBtn = dom('scan-again');
+const highlightBtn = dom('highlight-btn');
+const openSiteBtn = dom('open-site');
+const currentUrlEl = dom('current-url');
+const resultCard = dom('result-card');
+const reasonsList = dom('reasons-list');
+const gaugeFill = dom('gauge-fill');
+const gaugeLabel = dom('gauge-label');
+const riskLevelEl = dom('risk-level');
+const riskDescEl = dom('risk-desc');
+const statusBadge = dom('status-badge');
 
-        // 1. IP Address Detection
-        const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+let currentUrl = '';
 
-        if (ipPattern.test(hostname)) {
-            const parts = hostname.split('.');
+function setStatus(text){statusBadge.textContent = text}
 
-            const isValidIP = parts.every(part => {
-                const num = parseInt(part);
-                return num >= 0 && num <= 255;
-            });
-
-            if (isValidIP) {
-                analysis.score += 25;
-
-                analysis.reasons.push({
-                    title: 'IP Address Used',
-                    description:
-                        'Website uses an IP address instead of a domain name.',
-                    severity: 'high'
-                });
-            }
-        }
-
-        // 2. Long URL Detection
-        if (fullUrl.length > 100) {
-            analysis.score += 5;
-
-            analysis.reasons.push({
-                title: 'Unusually Long URL',
-                description:
-                    `URL is exceptionally long (${fullUrl.length} characters).`,
-                severity: 'medium'
-            });
-        }
-
-        // 3. Excessive Subdomains
-        const subdomainCount =
-            (hostname.match(/\./g) || []).length;
-
-        if (subdomainCount > 3) {
-            analysis.score += 12;
-
-            analysis.reasons.push({
-                title: 'Excessive Subdomains',
-                description:
-                    `URL has ${subdomainCount} levels.`,
-                severity: 'medium'
-            });
-        }
-
-        // 4. Suspicious Keywords
-        const suspiciousKeywords = [
-            'verify',
-            'confirm',
-            'urgent',
-            'account',
-            'login',
-            'signin',
-            'update',
-            'validate',
-            'authenticate',
-            'security'
-        ];
-
-        const lowerUrl = fullUrl.toLowerCase();
-
-        let keywordMatches = 0;
-
-        suspiciousKeywords.forEach(keyword => {
-            if (lowerUrl.includes(keyword)) {
-                keywordMatches++;
-            }
-        });
-
-        if (keywordMatches > 0) {
-            analysis.score += Math.min(
-                15,
-                keywordMatches * 5
-            );
-
-            analysis.reasons.push({
-                title: 'Suspicious Keywords Detected',
-                description:
-                    `Found ${keywordMatches} suspicious keyword(s).`,
-                severity: 'medium'
-            });
-        }
-
-        // 5. Impersonation Detection
-        const impersonationPattern =
-            /paypal|amazon|apple|google|microsoft|bank|security/i;
-
-        if (
-            impersonationPattern.test(hostname) &&
-            !isKnownDomain(hostname)
-        ) {
-            analysis.score += 18;
-
-            analysis.reasons.push({
-                title: 'Potential Impersonation',
-                description:
-                    'Domain resembles a popular service.',
-                severity: 'high'
-            });
-        }
-
-        // 6. Multiple Hyphens
-        const domainPart = hostname.split('.')[0];
-
-        const hyphenCount =
-            (domainPart.match(/-/g) || []).length;
-
-        if (hyphenCount >= 2) {
-            analysis.score += 8;
-
-            analysis.reasons.push({
-                title: 'Multiple Hyphens in Domain',
-                description:
-                    `Domain contains ${hyphenCount} hyphens.`,
-                severity: 'low'
-            });
-        }
-
-        // 7. URL Shortener Detection
-        const shortenerDomains = [
-            'bit.ly',
-            'tinyurl.com',
-            'ow.ly',
-            'short.link'
-        ];
-
-        if (shortenerDomains.includes(hostname)) {
-            analysis.score += 20;
-
-            analysis.reasons.push({
-                title: 'URL Shortener Detected',
-                description:
-                    'This is a shortened URL.',
-                severity: 'high'
-            });
-        }
-
-        // 8. HTTP Detection
-        if (url.protocol === 'http:') {
-            analysis.score += 15;
-
-            analysis.reasons.push({
-                title: 'No HTTPS Encryption',
-                description:
-                    'Website uses HTTP instead of HTTPS.',
-                severity: 'high'
-            });
-        }
-
-        // 9. Excessive Numbers
-        const numberRatio =
-            (hostname.match(/\d/g) || []).length /
-            hostname.length;
-
-        if (numberRatio > 0.3) {
-            analysis.score += 6;
-
-            analysis.reasons.push({
-                title: 'Excessive Numbers in Domain',
-                description:
-                    'Domain has an unusual number ratio.',
-                severity: 'low'
-            });
-        }
-
-        // 10. Non-Standard Port
-        if (
-            url.port &&
-            !['80', '443'].includes(url.port)
-        ) {
-            analysis.score += 12;
-
-            analysis.reasons.push({
-                title: 'Non-Standard Port',
-                description:
-                    `Uses non-standard port ${url.port}.`,
-                severity: 'medium'
-            });
-        }
-
-        // Maximum score = 100
-        analysis.score = Math.min(
-            100,
-            analysis.score
-        );
-
-    } catch (error) {
-        console.error(
-            'URL Analysis Error:',
-            error
-        );
-    }
-
-    return analysis;
+function showUrl(url){
+  currentUrl = url || '';
+  currentUrlEl.textContent = currentUrl || '(no site detected)';
 }
 
-
-// Check Trusted Domains
-function isKnownDomain(hostname) {
-
-    const knownDomains = [
-        'paypal.com',
-        'amazon.com',
-        'apple.com',
-        'google.com',
-        'microsoft.com',
-        'facebook.com',
-        'youtube.com',
-        'github.com',
-        'wikipedia.org',
-        'reddit.com'
-    ];
-
-    return knownDomains.some(domain =>
-        hostname === domain ||
-        hostname.endsWith('.' + domain)
-    );
+function getActiveTabUrl(){
+  return new Promise((resolve)=>{
+    try{
+      chrome.tabs.query({active:true,currentWindow:true}, (tabs)=>{
+        if(!tabs || tabs.length===0){resolve('');return}
+        resolve(tabs[0].url || '');
+      });
+    }catch(e){resolve('');}
+  });
 }
 
+function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 
-// Get Risk Level
-function getRiskLevel(score) {
+function analyzeURL(url){
+  const reasons = [];
+  if(!url) return {score:0,reasons};
 
-    if (score < 30) {
-        return {
-            level: 'Low Risk',
-            class: 'low-risk',
-            emoji: '✅'
-        };
+  try{
+    const u = new URL(url);
+    const hostname = u.hostname;
+    const pathname = u.pathname || '/';
+    const protocol = u.protocol.replace(':','');
+
+    // checks
+    // 1. IP address instead of domain
+    const ipV4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+    const ipV6 = /^\[?[0-9a-fA-F:]+\]?$/;
+    if(ipV4.test(hostname) || ipV6.test(hostname)){
+      reasons.push({label:'IP address used instead of a domain', weight:30});
     }
 
-    if (score < 60) {
-        return {
-            level: 'Suspicious',
-            class: 'medium-risk',
-            emoji: '⚠️'
-        };
+    // 2. HTTP instead of HTTPS
+    if(protocol === 'http'){
+      reasons.push({label:'Not using HTTPS (no secure padlock)', weight:20});
     }
+
+    // 3. Unusually long URL
+    const urlLen = url.length;
+    if(urlLen > 100) reasons.push({label:'Unusually long URL', weight:12});
+    else if(urlLen > 80) reasons.push({label:'Long URL length', weight:6});
+
+    // 4. Excessive subdomains
+    const parts = hostname.split('.').filter(Boolean);
+    if(parts.length >= 4) reasons.push({label:'Excessive subdomains (possible trickery)', weight:10});
+
+    // 5. Suspicious keywords
+    const suspiciousKeywords = ['login','signin','verify','update','secure','account','bank','confirm','password','ssn','social','security','invoice','payment','urgent','verify','confirm','webscr','ebayisapi','paypal','appleid'];
+    const hostLower = hostname.toLowerCase();
+    for(const kw of suspiciousKeywords){
+      if(hostLower.includes(kw)){
+        reasons.push({label:`Suspicious keyword in domain: "${kw}"`, weight:8});
+        break;
+      }
+    }
+    const pathLower = pathname.toLowerCase();
+    for(const kw of ['login','verify','confirm','update','secure','password','banking','otp']){
+      if(pathLower.includes(kw)){
+        reasons.push({label:`Suspicious keyword in path: "${kw}"`, weight:6});
+        break;
+      }
+    }
+
+    // 6. Hyphen abuse
+    const hyphenCount = (hostname.match(/-/g)||[]).length;
+    if(hyphenCount >= 3) reasons.push({label:'Multiple hyphens in domain (could be deceptive)', weight:6});
+
+    // 7. URL shortener domains
+    const shorteners = ['bit.ly','tinyurl.com','t.co','goo.gl','bitly.com','ow.ly','is.gd','buff.ly','adf.ly'];
+    if(shorteners.includes(hostLower)) reasons.push({label:'URL shortener domain — original target is hidden', weight:14});
+
+    // 8. @ symbol or unusual patterns
+    if(url.includes('@')) reasons.push({label:'"@" in URL — may hide the true destination', weight:10});
+    if(url.match(/\/\/[\w.-]*\//g)?.length > 2){} // ignore
+
+    // 9. Many path segments
+    const segments = pathname.split('/').filter(Boolean);
+    if(segments.length >= 6) reasons.push({label:'Many path segments (deep, possibly auto-generated)', weight:6});
+
+    // 10. IP in path or query
+    if(url.match(/https?:\/\/(?:\d+\.){3}\d+/)) reasons.push({label:'IP address present in URL', weight:10});
+
+    // 11. Multiple query parameters with odd keys
+    const query = u.search;
+    if(query && query.length > 80) reasons.push({label:'Long query string (possible tracking or obfuscation)', weight:6});
+
+    // 12. Look for homoglyph-like long host parts (repetition)
+    if(hostname.length > 30) reasons.push({label:'Very long domain name (potentially deceptive)', weight:8});
+
+    // 13. Mixed unicode characters (punycode)
+    if(hostname.includes('xn--')) reasons.push({label:'Punycode/IDN domain (may hide lookalikes)', weight:12});
+
+    // baseline scoring: start at 0 and add weights
+    let score = 0;
+    for(const r of reasons) score += r.weight;
+
+    // Heuristic modifiers
+    // If domain is well-known safe TLDs (like .gov, .edu) reduce risk
+    const safeTlds = ['gov','edu'];
+    const tld = parts.length ? parts[parts.length-1].toLowerCase() : '';
+    if(safeTlds.includes(tld)) score = Math.max(0, score - 20);
+
+    // If hostname appears short & simple, reduce small amount
+    if(hostname.length < 12 && parts.length <= 2 && !hostname.includes('-')) score = Math.max(0, score - 6);
+
+    // Cap to 0..100
+    score = clamp(Math.round(score),0,100);
+
+    // Prepare descriptive reasons (dedupe similar)
+    const dedup = [];
+    const labels = new Set();
+    for(const r of reasons){ if(!labels.has(r.label)){ dedup.push(r); labels.add(r.label);} }
 
     return {
-        level: 'High Risk',
-        class: 'high-risk',
-        emoji: '🚨'
+      score,
+      reasons: dedup.map(r=>r.label),
+      rawReasons: dedup,
+      hostname,
+      protocol,
+      path: pathname
     };
+
+  }catch(err){
+    return {score:0,reasons:['Unable to parse URL']};
+  }
 }
 
-
-// Update Progress Circle
-function updateProgressCircle(score) {
-
-    const radius = 45;
-
-    const circumference =
-        2 * Math.PI * radius;
-
-    const offset =
-        circumference -
-        (score / 100) * circumference;
-
-    progressCircle.style.strokeDashoffset =
-        offset;
-
-    progressCircle.classList.remove(
-        'risk-low',
-        'risk-medium',
-        'risk-high'
-    );
-
-    if (score < 30) {
-        progressCircle.classList.add(
-            'risk-low'
-        );
-    }
-
-    else if (score < 60) {
-        progressCircle.classList.add(
-            'risk-medium'
-        );
-    }
-
-    else {
-        progressCircle.classList.add(
-            'risk-high'
-        );
-    }
+function riskLevel(score){
+  if(score < 30) return {level:'Low Risk', color:'#36d399', desc:'Looks safe based on local checks.'};
+  if(score < 60) return {level:'Suspicious', color:'#ffb020', desc:'Proceed with caution. Several warning signs detected.'};
+  return {level:'High Risk', color:'#ff6b6b', desc:'Many suspicious signals. Avoid entering sensitive data.'};
 }
 
+function updateUI(result){
+  resultCard.classList.remove('hidden');
+  gaugeLabel.textContent = String(result.score);
+  gaugeFill.style.width = `${clamp(result.score,0,100)}%`;
+  const rl = riskLevel(result.score);
+  riskLevelEl.textContent = rl.level;
+  riskLevelEl.style.color = rl.color;
+  riskDescEl.textContent = rl.desc;
 
-// Display Results
-function displayResults(url, analysis) {
-
-    hideAllStates();
-
-    resultsState.classList.remove(
-        'hidden'
-    );
-
-    const displayUrl =
-        url.length > 60
-            ? url.substring(0, 57) + '...'
-            : url;
-
-    currentUrlDisplay.textContent =
-        displayUrl;
-
-    currentUrlDisplay.title =
-        url;
-
-    riskScoreDisplay.textContent =
-        analysis.score;
-
-    updateProgressCircle(
-        analysis.score
-    );
-
-    const riskLevel =
-        getRiskLevel(
-            analysis.score
-        );
-
-    riskStatusDisplay.textContent =
-        riskLevel.emoji +
-        ' ' +
-        riskLevel.level;
-
-    riskStatusDisplay.className =
-        'risk-status ' +
-        riskLevel.class;
-
-
-    // Display Issues
-    if (analysis.reasons.length === 0) {
-
-        issuesListDisplay.innerHTML =
-            '<p class="no-issues">✅ No suspicious patterns detected.</p>';
-
+  // reasons
+  reasonsList.innerHTML = '';
+  if(result.reasons && result.reasons.length){
+    for(const r of result.reasons){
+      const li = document.createElement('li');
+      li.textContent = r;
+      reasonsList.appendChild(li);
     }
-
-    else {
-
-        issuesListDisplay.innerHTML =
-            analysis.reasons
-                .map(reason => `
-                    <div class="issue-item">
-
-                        <strong>
-                            ⚠️ ${reason.title}
-                        </strong>
-
-                        ${reason.description}
-
-                    </div>
-                `)
-                .join('');
-    }
+  }else{
+    const li = document.createElement('li'); li.textContent = 'No obvious issues detected by local checks.'; reasonsList.appendChild(li);
+  }
 }
 
-
-// Show Error
-function showError(message) {
-
-    hideAllStates();
-
-    errorState.classList.remove(
-        'hidden'
-    );
-
-    errorMessage.textContent =
-        message;
+async function analyzeCurrent(){
+  setStatus('Scanning...');
+  const url = currentUrl;
+  const res = analyzeURL(url);
+  updateUI(res);
+  setStatus('Ready');
 }
 
-
-// Hide All States
-function hideAllStates() {
-
-    loadingState.classList.add(
-        'hidden'
-    );
-
-    errorState.classList.add(
-        'hidden'
-    );
-
-    resultsState.classList.add(
-        'hidden'
-    );
+async function init(){
+  setStatus('Loading...');
+  const url = await getActiveTabUrl();
+  showUrl(url);
+  setStatus('Ready');
 }
 
-
-// Get Current Tab URL
-async function getCurrentTabUrl() {
-
-    try {
-
-        const [tab] =
-            await chrome.tabs.query({
-                active: true,
-                currentWindow: true
-            });
-
-        if (!tab || !tab.url) {
-
-            showError(
-                'Unable to access current tab URL.'
-            );
-
-            return null;
-        }
-
-        try {
-
-            new URL(tab.url);
-
-            return tab.url;
-
-        }
-
-        catch {
-
-            showError(
-                'Current page URL cannot be analyzed.'
-            );
-
-            return null;
-        }
-
-    }
-
-    catch (error) {
-
-        console.error(
-            'Error:',
-            error
-        );
-
-        showError(
-            'Error accessing tab information.'
-        );
-
-        return null;
-    }
+// highlight on page by injecting content.js and sending a message
+function highlightOnPage(){
+  if(!currentUrl) return;
+  chrome.tabs.query({active:true,currentWindow:true}, (tabs)=>{
+    if(!tabs || !tabs[0]) return;
+    const tabId = tabs[0].id;
+    // inject the content script then send message
+    chrome.scripting.executeScript({
+      target:{tabId},
+      files:['content.js']
+    }, ()=>{
+      chrome.tabs.sendMessage(tabId, {action:'highlight', url:currentUrl}, ()=>{});
+    });
+  });
 }
 
-
-// Perform Analysis
-async function performAnalysis() {
-
-    hideAllStates();
-
-    loadingState.classList.remove(
-        'hidden'
-    );
-
-    const url =
-        await getCurrentTabUrl();
-
-    if (!url) {
-        return;
-    }
-
-    await new Promise(
-        resolve =>
-            setTimeout(resolve, 500)
-    );
-
-    const analysis =
-        analyzeURL(url);
-
-    displayResults(
-        url,
-        analysis
-    );
+// open site in new tab
+function openSite(){
+  if(!currentUrl) return;
+  chrome.tabs.create({url:currentUrl});
 }
 
+// event listeners
+analyzeBtn.addEventListener('click', analyzeCurrent);
+scanAgainBtn.addEventListener('click', analyzeCurrent);
+highlightBtn.addEventListener('click', ()=>{ highlightOnPage(); setStatus('Highlight sent'); });
+openSiteBtn.addEventListener('click', openSite);
 
-// Initialize Buttons
-function initializeEventListeners() {
-
-    analyzeAgainBtn.addEventListener(
-        'click',
-        performAnalysis
-    );
-
-    retryButton.addEventListener(
-        'click',
-        performAnalysis
-    );
-}
-
-
-// Start Extension
-document.addEventListener(
-    'DOMContentLoaded',
-    async () => {
-
-        initializeEventListeners();
-
-        await performAnalysis();
-    }
-);
+// init
+init();
